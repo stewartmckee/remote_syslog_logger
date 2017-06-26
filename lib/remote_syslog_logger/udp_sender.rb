@@ -7,7 +7,8 @@ module RemoteSyslogLogger
       @remote_hostname = remote_hostname
       @remote_port     = remote_port
       @whinyerrors     = options[:whinyerrors]
-      
+      @exclude_pattern = options[:exclude_patterns] || []
+
       @socket = UDPSocket.new
       @packet = SyslogProtocol::Packet.new
 
@@ -19,24 +20,26 @@ module RemoteSyslogLogger
       @packet.severity = options[:severity] || 'notice'
       @packet.tag      = options[:program]  || "#{File.basename($0)}[#{$$}]"
     end
-    
+
     def transmit(message)
-      message.split(/\r?\n/).each do |line|
-        begin
-          next if line =~ /^\s*$/
-          packet = @packet.dup
-          packet.content = line
-          @socket.send(packet.assemble, 0, @remote_hostname, @remote_port)
-        rescue
-          $stderr.puts "#{self.class} error: #{$!.class}: #{$!}\nOriginal message: #{line}"
-          raise if @whinyerrors
+      unless @exclude_patterns.detect{|pattern| pattern.match(message)}
+        message.split(/\r?\n/).each do |line|
+          begin
+            next if line =~ /^\s*$/
+            packet = @packet.dup
+            packet.content = line
+            @socket.send(packet.assemble, 0, @remote_hostname, @remote_port)
+          rescue
+            $stderr.puts "#{self.class} error: #{$!.class}: #{$!}\nOriginal message: #{line}"
+            raise if @whinyerrors
+          end
         end
       end
     end
-    
+
     # Make this act a little bit like an `IO` object
     alias_method :write, :transmit
-    
+
     def close
       @socket.close
     end
