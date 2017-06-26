@@ -7,7 +7,7 @@ module RemoteSyslogLogger
       @remote_hostname = remote_hostname
       @remote_port     = remote_port
       @whinyerrors     = options[:whinyerrors]
-      @exclude_pattern = options[:exclude_patterns] || []
+      @exclude_patterns = options[:exclude_patterns] || []
 
       @socket = UDPSocket.new
       @packet = SyslogProtocol::Packet.new
